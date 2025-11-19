@@ -1,0 +1,34 @@
+Atue como um Arquiteto de Software Sênior. Eu preciso configurar a base de um projeto **PERN Stack** (PostgreSQL, Express, React, Node.js) para um PWA de gestão de transporte acadêmico.
+
+**Objetivos Primários:**
+1.  Estrutura Monorepo: /server e /client.
+2.  Configuração do PostgreSQL via Docker.
+3.  Modelagem das tabelas essenciais (Schema).
+
+**Instruções Detalhadas:**
+
+### 1. Estrutura do Projeto
+- Crie um diretório raiz. Dentro dele, crie as pastas `/server` (para Node/Express) e `/client` (para React/Vite).
+- Crie um arquivo `package.json` básico na raiz com scripts para rodar o backend e o frontend.
+
+### 2. Configuração do Backend (Node.js/Express)
+- Na pasta `/server`, crie o `package.json` para Node.js.
+- Instale dependências básicas: `express`, `cors`, `dotenv`, e `pg` (cliente PostgreSQL).
+- Crie o arquivo de entrada `server.js` com uma rota de teste (`/api/status`) e inicialize o Express.
+
+### 3. Configuração Local do PostgreSQL (Docker)
+- Crie um arquivo `docker-compose.yml` na raiz do projeto.
+- Este arquivo deve definir um serviço para rodar o **PostgreSQL** (versão 14 ou superior) na porta `5432`.
+- O banco deve ser configurado com um usuário (`user`), senha (`password`) e nome do banco (`transport_db`) definidos por **variáveis de ambiente**.
+- Adicione um volume para persistência de dados.
+
+### 4. Modelagem do Banco de Dados (Schema)
+Crie um arquivo chamado **`db_schema.sql`** na pasta `/server/db`. Este arquivo deve conter os comandos SQL para criar as seguintes tabelas, garantindo as chaves primárias e tipos de dados corretos:
+
+1.  **Users** (Autenticação e Permissões): id (UUID PK), full_name, email (UNIQUE), password_hash, phone_number, role (ENUM: ADMIN, COORDINATOR, DRIVER, STUDENT), is_active (BOOLEAN).
+2.  **Routes** (Logística): id (UUID PK), name, driver_id (FK Users), max_capacity (INTEGER), start_time (TIME).
+3.  **Enrollments** (Matrículas): id (UUID PK), student_id (FK Users), route_id (FK Routes), monthly_fee (NUMERIC), due_day (INTEGER), is_active (BOOLEAN).
+4.  **Payments** (Financeiro): id (UUID PK), enrollment_id (FK Enrollments), billing_month (DATE), amount_due (NUMERIC), status (ENUM: PAID, PENDING, OVERDUE), processor_by_id (FK Users).
+5.  **AuditLogs** (Rastreabilidade): id (UUID PK), user_id (FK Users), action_type (VARCHAR), target_table (VARCHAR), timestamp (TIMESTAMP).
+
+O objetivo deste prompt é criar o esqueleto do projeto e o alicerce do banco de dados para que eu possa rodar `docker-compose up` e iniciar as migrations.
