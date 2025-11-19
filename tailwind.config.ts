@@ -81,6 +81,11 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        success: "hsl(142 76% 36%)",
+        warning: "hsl(32 95% 44%)",
+        pending: "hsl(32 95% 44%)",
+        overdue: "hsl(0 84% 48%)",
+        paid: "hsl(142 76% 36%)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
