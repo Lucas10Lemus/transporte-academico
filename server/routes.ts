@@ -2,12 +2,21 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, requireAuth, requireRole } from "./auth";
-import { insertUserSchema, insertRouteSchema, insertEnrollmentSchema, insertPaymentSchema } from "@shared/schema";
+import { 
+  insertUserSchema, 
+  updateUserSchema,
+  insertRouteSchema, 
+  updateRouteSchema,
+  insertEnrollmentSchema, 
+  updateEnrollmentSchema,
+  insertPaymentSchema,
+  updatePaymentSchema 
+} from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Authentication Routes
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", requireAuth, requireRole("ADMIN"), async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
       
@@ -23,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await storage.createAuditLog({
-        userId: user.id,
+        userId: req.user!.id,
         actionType: "CREATE",
         targetTable: "users",
         targetId: user.id,
@@ -32,6 +41,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { passwordHash: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword });
     } catch (error: any) {
+      await storage.createAuditLog({
+        userId: req.user?.id || "SYSTEM",
+        actionType: "FAILED_CREATE",
+        targetTable: "users",
+        changes: JSON.stringify({ error: error.message }),
+      });
       res.status(400).json({ error: error.message });
     }
   });
@@ -46,15 +61,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUserByEmail(email);
       if (!user || !user.isActive) {
+        await storage.createAuditLog({
+          userId: "SYSTEM",
+          actionType: "FAILED_LOGIN",
+          targetTable: "users",
+          changes: JSON.stringify({ email }),
+        });
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
       const isValid = await verifyPassword(password, user.passwordHash);
       if (!isValid) {
+        await storage.createAuditLog({
+          userId: user.id,
+          actionType: "FAILED_LOGIN",
+          targetTable: "users",
+          targetId: user.id,
+        });
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
       req.session.userId = user.id;
+      
+      await storage.createAuditLog({
+        userId: user.id,
+        actionType: "LOGIN",
+        targetTable: "users",
+        targetId: user.id,
+      });
 
       const { passwordHash: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword });
@@ -63,10 +97,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/logout", (req, res) => {
+  app.post("/api/auth/logout", requireAuth, async (req, res) => {
+    const userId = req.user?.id;
     req.session.destroy((err) => {
       if (err) {
         return res.status(500).json({ error: "Failed to logout" });
+      }
+      if (userId) {
+        storage.createAuditLog({
+          userId,
+          actionType: "LOGOUT",
+          targetTable: "users",
+          targetId: userId,
+        });
       }
       res.json({ success: true });
     });
@@ -104,13 +147,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/users/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {
     try {
-      const updates = req.body;
+      const allowedUpdates = updateUserSchema.parse(req.body);
       
-      if (updates.passwordHash) {
-        updates.passwordHash = await hashPassword(updates.passwordHash);
+      const updateData: any = { ...allowedUpdates };
+      if (allowedUpdates.password) {
+        updateData.passwordHash = await hashPassword(allowedUpdates.password);
+        delete updateData.password;
       }
 
-      const user = await storage.updateUser(req.params.id, updates);
+      const user = await storage.updateUser(req.params.id, updateData);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
@@ -120,11 +165,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actionType: "UPDATE",
         targetTable: "users",
         targetId: user.id,
-        changes: JSON.stringify(updates),
+        changes: JSON.stringify(allowedUpdates),
       });
 
       const { passwordHash: _, ...userWithoutPassword } = user;
       res.json({ user: userWithoutPassword });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/users/:id", requireAuth, requireRole("ADMIN"), async (req, res) => {
+    try {
+      const enrollments = await storage.listEnrollmentsByStudent(req.params.id);
+      if (enrollments.length > 0) {
+        return res.status(400).json({ error: "Cannot delete user with active enrollments" });
+      }
+
+      const deleted = await storage.deleteUser(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        actionType: "DELETE",
+        targetTable: "users",
+        targetId: req.params.id,
+      });
+
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -181,7 +251,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/routes/:id", requireAuth, requireRole("ADMIN", "COORDINATOR"), async (req, res) => {
     try {
-      const route = await storage.updateRoute(req.params.id, req.body);
+      const allowedUpdates = updateRouteSchema.parse(req.body);
+      const route = await storage.updateRoute(req.params.id, allowedUpdates);
       if (!route) {
         return res.status(404).json({ error: "Route not found" });
       }
@@ -191,10 +262,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actionType: "UPDATE",
         targetTable: "routes",
         targetId: route.id,
-        changes: JSON.stringify(req.body),
+        changes: JSON.stringify(allowedUpdates),
       });
 
       res.json({ route });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/routes/:id", requireAuth, requireRole("ADMIN", "COORDINATOR"), async (req, res) => {
+    try {
+      const enrollments = await storage.listEnrollmentsByRoute(req.params.id);
+      if (enrollments.length > 0) {
+        return res.status(400).json({ error: "Cannot delete route with active enrollments" });
+      }
+
+      const deleted = await storage.deleteRoute(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Route not found" });
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        actionType: "DELETE",
+        targetTable: "routes",
+        targetId: req.params.id,
+      });
+
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -223,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/enrollments/route/:routeId", requireAuth, async (req, res) => {
+  app.get("/api/enrollments/route/:routeId", requireAuth, requireRole("ADMIN", "COORDINATOR", "DRIVER"), async (req, res) => {
     try {
       const enrollments = await storage.listEnrollmentsByRoute(req.params.routeId);
       res.json({ enrollments });
@@ -252,7 +348,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/enrollments/:id", requireAuth, requireRole("ADMIN", "COORDINATOR"), async (req, res) => {
     try {
-      const enrollment = await storage.updateEnrollment(req.params.id, req.body);
+      const allowedUpdates = updateEnrollmentSchema.parse(req.body);
+      const enrollment = await storage.updateEnrollment(req.params.id, allowedUpdates);
       if (!enrollment) {
         return res.status(404).json({ error: "Enrollment not found" });
       }
@@ -262,10 +359,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actionType: "UPDATE",
         targetTable: "enrollments",
         targetId: enrollment.id,
-        changes: JSON.stringify(req.body),
+        changes: JSON.stringify(allowedUpdates),
       });
 
       res.json({ enrollment });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/enrollments/:id", requireAuth, requireRole("ADMIN", "COORDINATOR"), async (req, res) => {
+    try {
+      const payments = await storage.listPaymentsByEnrollment(req.params.id);
+      if (payments.some(p => p.status === "PENDING" || p.status === "OVERDUE")) {
+        return res.status(400).json({ error: "Cannot delete enrollment with pending payments" });
+      }
+
+      const deleted = await storage.deleteEnrollment(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Enrollment not found" });
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        actionType: "DELETE",
+        targetTable: "enrollments",
+        targetId: req.params.id,
+      });
+
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -310,14 +432,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/payments/:id", requireAuth, requireRole("ADMIN", "COORDINATOR"), async (req, res) => {
     try {
-      const updates = req.body;
+      const allowedUpdates = updatePaymentSchema.parse(req.body);
       
-      if (updates.status === "PAID" && !updates.paidAt) {
-        updates.paidAt = new Date();
-        updates.processorById = req.user!.id;
+      if (allowedUpdates.status === "PAID" && !allowedUpdates.paidAt) {
+        allowedUpdates.paidAt = new Date();
+        allowedUpdates.processorById = req.user!.id;
       }
 
-      const payment = await storage.updatePayment(req.params.id, updates);
+      const payment = await storage.updatePayment(req.params.id, allowedUpdates);
       if (!payment) {
         return res.status(404).json({ error: "Payment not found" });
       }
@@ -327,10 +449,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         actionType: "UPDATE",
         targetTable: "payments",
         targetId: payment.id,
-        changes: JSON.stringify(updates),
+        changes: JSON.stringify(allowedUpdates),
       });
 
       res.json({ payment });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/payments/:id", requireAuth, requireRole("ADMIN", "COORDINATOR"), async (req, res) => {
+    try {
+      const deleted = await storage.deletePayment(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        actionType: "DELETE",
+        targetTable: "payments",
+        targetId: req.params.id,
+      });
+
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

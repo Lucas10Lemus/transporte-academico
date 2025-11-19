@@ -61,9 +61,17 @@ export const insertUserSchema = createInsertSchema(users, {
   id: true,
 });
 
+export const updateUserSchema = insertUserSchema.omit({
+  passwordHash: true,
+}).extend({
+  password: z.string().min(6).optional(),
+}).partial();
+
 export const insertRouteSchema = createInsertSchema(routes).omit({
   id: true,
 });
+
+export const updateRouteSchema = insertRouteSchema.partial();
 
 export const insertEnrollmentSchema = createInsertSchema(enrollments, {
   monthlyFee: z.string().or(z.number()),
@@ -72,11 +80,15 @@ export const insertEnrollmentSchema = createInsertSchema(enrollments, {
   id: true,
 });
 
+export const updateEnrollmentSchema = insertEnrollmentSchema.partial();
+
 export const insertPaymentSchema = createInsertSchema(payments, {
   amountDue: z.string().or(z.number()),
 }).omit({
   id: true,
 });
+
+export const updatePaymentSchema = insertPaymentSchema.partial();
 
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   id: true,
@@ -84,15 +96,19 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type User = typeof users.$inferSelect;
 
 export type InsertRoute = z.infer<typeof insertRouteSchema>;
+export type UpdateRoute = z.infer<typeof updateRouteSchema>;
 export type Route = typeof routes.$inferSelect;
 
 export type InsertEnrollment = z.infer<typeof insertEnrollmentSchema>;
+export type UpdateEnrollment = z.infer<typeof updateEnrollmentSchema>;
 export type Enrollment = typeof enrollments.$inferSelect;
 
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+export type UpdatePayment = z.infer<typeof updatePaymentSchema>;
 export type Payment = typeof payments.$inferSelect;
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
