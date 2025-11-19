@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { db } from "./db";
 import { users, routes, enrollments, payments } from "@shared/schema";
 import { hashPassword } from "./auth";
