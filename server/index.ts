@@ -12,7 +12,7 @@ const PgStore = pgSession(session);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Configuração de Sessão (Login) Robusta
+// Configuração de Sessão Robusta (Salva no Docker)
 app.use(
   session({
     store: new PgStore({
@@ -26,13 +26,13 @@ app.use(
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 dias
       httpOnly: true,
-      secure: false, // Importante: FALSE para rodar em localhost (sem https)
+      secure: false, // FALSE para localhost
       sameSite: "lax",
     },
   })
 );
 
-// Log simples de requisições
+// Log simples
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {
     const start = Date.now();

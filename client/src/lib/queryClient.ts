@@ -16,7 +16,6 @@ export async function apiRequest(
   url: string,
   options: RequestInit | undefined = {}
 ) {
-  // Faz a requisição para o backend (proxy configurado no Vite)
   const res = await fetch(url, {
     ...options,
     headers: {
@@ -25,17 +24,14 @@ export async function apiRequest(
     },
   });
 
-  // Se der erro (4xx ou 5xx), lança uma exceção
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.message || data.error || "Erro desconhecido na API");
+    throw new Error(data.message || data.error || "Erro na requisição");
   }
 
-  // Se for 204 (No Content), retorna null
   if (res.status === 204) {
     return null;
   }
 
-  // Retorna o JSON da resposta
   return res.json();
 }
