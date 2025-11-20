@@ -1,11 +1,13 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, boolean, integer, timestamp, numeric, pgEnum, time } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, boolean, integer, timestamp, numeric, pgEnum, time, date, json } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Enums
 export const userRoleEnum = pgEnum("user_role", ["ADMIN", "COORDINATOR", "DRIVER", "STUDENT"]);
 export const paymentStatusEnum = pgEnum("payment_status", ["PAID", "PENDING", "OVERDUE"]);
 
+// Tabelas
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   fullName: text("full_name").notNull(),
@@ -54,6 +56,18 @@ export const auditLogs = pgTable("audit_logs", {
   timestamp: timestamp("timestamp").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+// --- NOVA TABELA: LISTA DE PRESENÇA ---
+export const dailyPresence = pgTable("daily_presence", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  studentId: varchar("student_id").notNull().references(() => users.id),
+  date: date("date").notNull(), // Data da viagem (YYYY-MM-DD)
+  statusIda: boolean("status_ida").default(false), // TRUE = VOU
+  statusVolta: boolean("status_volta").default(false), // TRUE = VOU
+  observation: text("observation"),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Schemas de Validação (Zod)
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email(),
   phoneNumber: z.string().optional(),
@@ -95,6 +109,14 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   timestamp: true,
 });
 
+// --- NOVO SCHEMA DE PRESENÇA ---
+export const insertPresenceSchema = createInsertSchema(dailyPresence).omit({
+  id: true,
+  updatedAt: true
+});
+
+
+// Tipos Exportados
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -113,3 +135,14 @@ export type Payment = typeof payments.$inferSelect;
 
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 export type AuditLog = typeof auditLogs.$inferSelect;
+
+// --- NOVOS TIPOS DE PRESENÇA ---
+export type InsertPresence = z.infer<typeof insertPresenceSchema>;
+export type DailyPresence = typeof dailyPresence.$inferSelect;
+
+// Tabela de Sessão (para o Drizzle saber que ela existe)
+export const session = pgTable("session", {
+  sid: varchar("sid").primaryKey(),
+  sess: json("sess").notNull(),
+  expire: timestamp("expire", { precision: 6 }).notNull(),
+});
