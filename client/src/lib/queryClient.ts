@@ -1,6 +1,5 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 
-// Criação do cliente React Query
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -11,7 +10,6 @@ export const queryClient = new QueryClient({
   },
 });
 
-// Função genérica para chamadas de API
 export async function apiRequest(
   url: string,
   options: RequestInit | undefined = {}
@@ -29,9 +27,8 @@ export async function apiRequest(
     throw new Error(data.message || data.error || "Erro na requisição");
   }
 
-  if (res.status === 204) {
-    return null;
-  }
+  // Retorna null se for 204 (No Content)
+  if (res.status === 204) return null;
 
   return res.json();
 }

@@ -3,11 +3,8 @@ import react from "@vitejs/plugin-react";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 
-// --- AQUI ESTÁ A CORREÇÃO ---
-// Criamos o __dirname manualmente para o ES Module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-// ---------------------------
 
 export default defineConfig({
   plugins: [react()],
@@ -23,7 +20,6 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    // host: "0.0.0.0", // Removido para evitar problemas no Windows
     port: 5173,
     proxy: {
       "/api": {

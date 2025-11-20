@@ -1,7 +1,7 @@
-import { users, routes, enrollments, payments, auditLogs } from "@shared/schema";
+import { users, routes, enrollments, payments, auditLogs, dailyPresence } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm"; // Adicionado 'desc' que faltava
-import type { User, InsertUser, Route, InsertRoute, Enrollment, InsertEnrollment, Payment, InsertPayment, AuditLog, InsertAuditLog } from "@shared/schema";
+import { eq, and, desc } from "drizzle-orm"; 
+import type { User, InsertUser, Route, InsertRoute, Enrollment, InsertEnrollment, Payment, InsertPayment, AuditLog, InsertAuditLog, InsertPresence, DailyPresence } from "@shared/schema";
 
 export class DatabaseStorage {
   
@@ -64,12 +64,11 @@ export class DatabaseStorage {
     return !!deleted;
   }
 
-  // --- MATRÍCULAS (ENROLLMENTS) ---
+  // --- MATRÍCULAS ---
   async createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment> {
-    // Conversão de segurança: Garante que monthlyFee seja string
     const data = {
       ...enrollment,
-      monthlyFee: enrollment.monthlyFee.toString(),
+      monthlyFee: enrollment.monthlyFee.toString(), // Converte para string para o banco
     };
     const [newEnrollment] = await db.insert(enrollments).values(data).returning();
     return newEnrollment;
@@ -88,12 +87,10 @@ export class DatabaseStorage {
   }
 
   async updateEnrollment(id: string, enrollment: Partial<InsertEnrollment>): Promise<Enrollment | undefined> {
-    // Conversão de segurança para atualização parcial
     const data: any = { ...enrollment };
     if (enrollment.monthlyFee !== undefined) {
       data.monthlyFee = enrollment.monthlyFee.toString();
     }
-    
     const [updated] = await db.update(enrollments).set(data).where(eq(enrollments.id, id)).returning();
     return updated;
   }
@@ -110,7 +107,6 @@ export class DatabaseStorage {
 
   // --- PAGAMENTOS ---
   async createPayment(payment: InsertPayment): Promise<Payment> {
-    // Conversão de segurança: Garante que amountDue seja string
     const data = {
       ...payment,
       amountDue: payment.amountDue.toString(),
@@ -128,7 +124,6 @@ export class DatabaseStorage {
   }
 
   async updatePayment(id: string, payment: Partial<InsertPayment>): Promise<Payment | undefined> {
-     // Conversão de segurança
     const data: any = { ...payment };
     if (payment.amountDue !== undefined) {
       data.amountDue = payment.amountDue.toString();
@@ -155,6 +150,41 @@ export class DatabaseStorage {
 
   async listAuditLogs(limit: number = 100): Promise<AuditLog[]> {
     return await db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp)).limit(limit);
+  }
+
+  // --- PRESENÇA DIÁRIA (A Lógica que faltava!) ---
+  async getDailyPresence(studentId: string, date: Date): Promise<DailyPresence | undefined> {
+    // Pega a string da data YYYY-MM-DD para comparação
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Nota: Drizzle com driver pg pode retornar Date objects ou strings dependendo da config.
+    // Aqui assumimos que a comparação direta funciona ou precisamos ajustar no banco.
+    // Para simplificar e evitar erros de fuso horário, vamos buscar todos do aluno e filtrar no código se necessário,
+    // mas o ideal é usar sql raw ou funções de data. Vamos tentar o match exato primeiro.
+    
+    const allPresences = await db.select().from(dailyPresence).where(eq(dailyPresence.studentId, studentId));
+    return allPresences.find(p => p.date === dateStr);
+  }
+
+  async markPresence(presence: InsertPresence): Promise<DailyPresence> {
+    const dateObj = new Date(presence.date);
+    const existing = await this.getDailyPresence(presence.studentId, dateObj);
+    
+    if (existing) {
+      const [updated] = await db.update(dailyPresence)
+        .set({
+          statusIda: presence.statusIda,
+          statusVolta: presence.statusVolta,
+          observation: presence.observation,
+          updatedAt: new Date()
+        })
+        .where(eq(dailyPresence.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(dailyPresence).values(presence).returning();
+      return created;
+    }
   }
 }
 
