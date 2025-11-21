@@ -68,7 +68,7 @@ export class DatabaseStorage {
   async createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment> {
     const data = {
       ...enrollment,
-      monthlyFee: enrollment.monthlyFee.toString(), // Converte para string para o banco
+      monthlyFee: enrollment.monthlyFee.toString(),
     };
     const [newEnrollment] = await db.insert(enrollments).values(data).returning();
     return newEnrollment;
@@ -152,17 +152,11 @@ export class DatabaseStorage {
     return await db.select().from(auditLogs).orderBy(desc(auditLogs.timestamp)).limit(limit);
   }
 
-  // --- PRESENÇA DIÁRIA (A Lógica que faltava!) ---
+  // --- PRESENÇA DIÁRIA ---
   async getDailyPresence(studentId: string, date: Date): Promise<DailyPresence | undefined> {
-    // Pega a string da data YYYY-MM-DD para comparação
     const dateStr = date.toISOString().split('T')[0];
-    
-    // Nota: Drizzle com driver pg pode retornar Date objects ou strings dependendo da config.
-    // Aqui assumimos que a comparação direta funciona ou precisamos ajustar no banco.
-    // Para simplificar e evitar erros de fuso horário, vamos buscar todos do aluno e filtrar no código se necessário,
-    // mas o ideal é usar sql raw ou funções de data. Vamos tentar o match exato primeiro.
-    
     const allPresences = await db.select().from(dailyPresence).where(eq(dailyPresence.studentId, studentId));
+    // Filtra no código para garantir match exato da data string
     return allPresences.find(p => p.date === dateStr);
   }
 
@@ -185,6 +179,52 @@ export class DatabaseStorage {
       const [created] = await db.insert(dailyPresence).values(presence).returning();
       return created;
     }
+  }
+
+  // --- FUNCIONALIDADE DO MOTORISTA (O CÓDIGO NOVO) ---
+  async getDriverManifest(driverId: string, dateStr: string) {
+    // 1. Achar as rotas desse motorista
+    const driverRoutes = await db.select().from(routes).where(eq(routes.driverId, driverId));
+    
+    if (driverRoutes.length === 0) return [];
+
+    const routeIds = driverRoutes.map(r => r.id);
+    
+    // 2. Achar todos os alunos matriculados nessas rotas
+    const allEnrollments = await db.select().from(enrollments);
+    const routeEnrollments = allEnrollments.filter(e => routeIds.includes(e.routeId) && e.isActive);
+    
+    if (routeEnrollments.length === 0) return [];
+
+    // 3. Pegar os dados dos alunos
+    const studentIds = routeEnrollments.map(e => e.studentId);
+    const allUsers = await db.select().from(users);
+    const students = allUsers.filter(u => studentIds.includes(u.id));
+
+    // 4. Pegar a presença de hoje para esses alunos
+    // (Buscamos todos e filtramos no código pela data string para evitar erros de timezone do driver)
+    const allPresences = await db.select().from(dailyPresence);
+    
+    // 5. Combinar tudo
+    const manifest = students.map(student => {
+      const enrollment = routeEnrollments.find(e => e.studentId === student.id);
+      const route = driverRoutes.find(r => r.id === enrollment?.routeId);
+      const presence = allPresences.find(p => p.studentId === student.id && p.date === dateStr);
+
+      return {
+        studentId: student.id,
+        name: student.fullName,
+        phone: student.phoneNumber,
+        university: "UniFacema", 
+        routeId: route?.id,
+        routeName: route?.name,
+        statusIda: presence?.statusIda || false,
+        statusVolta: presence?.statusVolta || false,
+        pickupLocation: "Ponto Padrão"
+      };
+    });
+
+    return manifest;
   }
 }
 

@@ -1,3 +1,4 @@
+import RoutesPage from "@/pages/RoutesPage";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -69,7 +70,7 @@ function Router() {
           <main className="flex-1 overflow-auto p-6 bg-muted/30">
             <Switch>
               <Route path="/" component={Dashboard} />
-              <Route path="/routes" component={AdminDashboard} />
+              <Route path="/routes" component={RoutesPage} />
               <Route path="/payments" component={AdminDashboard} />
               <Route path="/users" component={AdminDashboard} />
               <Route path="/students" component={AdminDashboard} />

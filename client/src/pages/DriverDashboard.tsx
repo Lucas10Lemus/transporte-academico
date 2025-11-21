@@ -1,104 +1,155 @@
-import StudentChecklistItem from "@/components/StudentChecklistItem";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin, Users, CheckCircle } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Phone, MapPin, Search, RefreshCw, Sun, Moon } from "lucide-react";
+
+// Define o formato dos dados que vêm do Backend
+type ManifestItem = {
+  studentId: string;
+  name: string;
+  phone: string;
+  university: string;
+  routeName: string;
+  statusIda: boolean;
+  statusVolta: boolean;
+  pickupLocation: string;
+};
 
 export default function DriverDashboard() {
-  const students = [
-    { id: '1', name: 'Pedro Oliveira', pickupTime: '07:15', location: 'Av. Principal, 123', phoneNumber: '+55 11 98765-4321', checkedIn: false },
-    { id: '2', name: 'Juliana Ferreira', pickupTime: '07:25', location: 'Rua das Flores, 456', phoneNumber: '+55 11 91234-5678', checkedIn: true },
-    { id: '3', name: 'Lucas Andrade', pickupTime: '07:35', location: 'Praça Central, 789', phoneNumber: '+55 11 99876-5432', checkedIn: false },
-    { id: '4', name: 'Mariana Costa', pickupTime: '07:45', location: 'Av. Secundária, 321', phoneNumber: '+55 11 98123-4567', checkedIn: false },
-  ];
+  const { user } = useAuth();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [universityFilter, setUniversityFilter] = useState("TODAS");
 
-  const checkedInCount = students.filter(s => s.checkedIn).length;
+  // 1. Busca a lista real no servidor (Auto-atualiza a cada 30s)
+  const { data, isLoading, refetch } = useQuery<{ manifest: ManifestItem[] }>({
+    queryKey: ["/api/driver/manifest"],
+    queryFn: async () => apiRequest("/api/driver/manifest"),
+    refetchInterval: 30000, 
+  });
+
+  const manifest = data?.manifest || [];
+
+  // 2. Aplica os filtros (Busca por nome + Faculdade)
+  const filteredList = manifest.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    // Nota: Adicione 'university' no cadastro do aluno futuramente para filtrar real
+    // Por enquanto, filtra só por busca se o campo university estiver vazio no banco
+    const matchesUni = universityFilter === "TODAS" || item.university === universityFilter;
+    return matchesSearch && matchesUni;
+  });
+
+  // Contadores para as abas
+  const countIda = manifest.filter(i => i.statusIda).length;
+  const countVolta = manifest.filter(i => i.statusVolta).length;
+
+  // Componente da Lista (Renderiza cada aluno)
+  const StudentList = ({ type }: { type: "IDA" | "VOLTA" }) => {
+    // Mostra só quem marcou "VOU" para esta viagem
+    const list = filteredList.filter(item => type === "IDA" ? item.statusIda : item.statusVolta);
+
+    if (list.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground opacity-60">
+          <div className="bg-muted p-4 rounded-full mb-3">
+            {type === "IDA" ? <Sun className="w-8 h-8" /> : <Moon className="w-8 h-8" />}
+          </div>
+          <p>Ninguém confirmou para a {type} ainda.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {list.map((student) => (
+          <div key={student.studentId} className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm animate-in fade-in slide-in-from-bottom-2">
+            <div className="space-y-1">
+              <p className="font-bold text-lg leading-none">{student.name}</p>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant="secondary" className="text-xs font-normal h-5">
+                  {student.university || "Uni"}
+                </Badge>
+                <span className="flex items-center gap-1 text-xs">
+                  <MapPin className="w-3 h-3" /> {student.pickupLocation}
+                </span>
+              </div>
+            </div>
+            
+            <Button 
+              size="icon" 
+              className="rounded-full bg-green-600 hover:bg-green-700 text-white h-10 w-10 shrink-0 shadow-sm"
+              onClick={() => window.open(`https://wa.me/${student.phone?.replace(/\D/g, '')}`, '_blank')}
+            >
+              <Phone className="w-5 h-5" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="space-y-6" data-testid="page-driver-dashboard">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">Today's Route</h1>
-        <p className="text-muted-foreground">North Campus Route - November 19, 2025</p>
+    <div className="min-h-screen bg-muted/30 p-4 pb-24">
+      {/* Cabeçalho */}
+      <div className="flex justify-between items-end mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-primary tracking-tight">Lista de Presença</h1>
+          <p className="text-sm text-muted-foreground">Motorista: {user?.fullName.split(" ")[0]}</p>
+        </div>
+        <Button variant="outline" size="icon" onClick={() => refetch()} className="shrink-0">
+          <RefreshCw className="w-4 h-4" />
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Clock className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Start Time</p>
-                <p className="text-2xl font-semibold">07:00</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Students</p>
-                <p className="text-2xl font-semibold">{students.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-success/10 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-success" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Checked In</p>
-                <p className="text-2xl font-semibold">{checkedInCount}/{students.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Student Checklist
-          </CardTitle>
-          <Badge variant="secondary" data-testid="badge-progress">
-            {checkedInCount} of {students.length} checked in
-          </Badge>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {students.map((student) => (
-            <StudentChecklistItem
-              key={student.id}
-              id={student.id}
-              name={student.name}
-              pickupTime={student.pickupTime}
-              location={student.location}
-              phoneNumber={student.phoneNumber}
-              initialCheckedIn={student.checkedIn}
-            />
+      {/* Filtros Fixos */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md p-2 -mx-4 px-4 mb-4 border-b shadow-sm">
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Buscar passageiro..." 
+            className="pl-9 bg-white/50"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {["TODAS", "UniFacema", "IFMA", "UEMA"].map(uni => (
+            <Badge 
+              key={uni}
+              variant={universityFilter === uni ? "default" : "outline"}
+              className="h-7 px-3 cursor-pointer whitespace-nowrap transition-all"
+              onClick={() => setUniversityFilter(uni)}
+            >
+              {uni}
+            </Badge>
           ))}
-        </CardContent>
-      </Card>
-
-      <div className="flex gap-4">
-        <Button variant="outline" className="flex-1" data-testid="button-view-map">
-          <MapPin className="h-4 w-4 mr-2" />
-          View Route Map
-        </Button>
-        <Button variant="default" className="flex-1" data-testid="button-complete-route">
-          Complete Route
-        </Button>
+        </div>
       </div>
+
+      {/* Abas Principais */}
+      <Tabs defaultValue="IDA" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 h-12 mb-6 bg-muted/50 p-1">
+          <TabsTrigger value="IDA" className="text-base gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Sun className="w-4 h-4 text-orange-500" /> IDA ({countIda})
+          </TabsTrigger>
+          <TabsTrigger value="VOLTA" className="text-base gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Moon className="w-4 h-4 text-blue-500" /> VOLTA ({countVolta})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="IDA" className="mt-0">
+          <StudentList type="IDA" />
+        </TabsContent>
+
+        <TabsContent value="VOLTA" className="mt-0">
+          <StudentList type="VOLTA" />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
