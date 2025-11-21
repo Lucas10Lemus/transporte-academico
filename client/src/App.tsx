@@ -19,6 +19,7 @@ import RoutesPage from "@/pages/RoutesPage"; // Importe a página de rotas
 import StudentsPage from "@/pages/StudentsPage"; // Importe a página de alunos
 import NotFound from "@/pages/not-found";
 import PaymentsPage from "@/pages/PaymentsPage";
+import SettingsPage from "@/pages/SettingsPage";
 
 function Router() {
   const { user, logout, isLoading } = useAuth();
@@ -77,6 +78,7 @@ function Router() {
               <Route path="/routes" component={RoutesPage} />     {/* Página de Rotas Real */}
               <Route path="/students" component={StudentsPage} /> {/* Página de Alunos Real */}
               <Route path="/payments" component={PaymentsPage} />  {/* Página de Pagamentos Real */}
+              <Route path="/settings" component={SettingsPage} />
               
               {/* Rotas Específicas */}
               <Route path="/schedule" component={DriverDashboard} />
@@ -84,8 +86,6 @@ function Router() {
               
               {/* Fallbacks (Páginas ainda não criadas) */}
               <Route path="/users" component={AdminDashboard} />
-              <Route path="/settings" component={AdminDashboard} />
-              
               <Route component={NotFound} />
             </Switch>
           </main>
