@@ -18,6 +18,7 @@ import DriverDashboard from "@/pages/DriverDashboard";
 import RoutesPage from "@/pages/RoutesPage"; // Importe a página de rotas
 import StudentsPage from "@/pages/StudentsPage"; // Importe a página de alunos
 import NotFound from "@/pages/not-found";
+import PaymentsPage from "@/pages/PaymentsPage";
 
 function Router() {
   const { user, logout, isLoading } = useAuth();
@@ -75,13 +76,13 @@ function Router() {
               {/* Rotas de Admin */}
               <Route path="/routes" component={RoutesPage} />     {/* Página de Rotas Real */}
               <Route path="/students" component={StudentsPage} /> {/* Página de Alunos Real */}
+              <Route path="/payments" component={PaymentsPage} />  {/* Página de Pagamentos Real */}
               
               {/* Rotas Específicas */}
               <Route path="/schedule" component={DriverDashboard} />
               <Route path="/my-route" component={StudentDashboard} />
               
               {/* Fallbacks (Páginas ainda não criadas) */}
-              <Route path="/payments" component={AdminDashboard} />
               <Route path="/users" component={AdminDashboard} />
               <Route path="/settings" component={AdminDashboard} />
               
