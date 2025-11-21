@@ -5,11 +5,10 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Sun, Moon, Bus, MapPin, CheckCircle, XCircle } from "lucide-react";
+import { Sun, Moon, Bus, MapPin, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-// Tipo da resposta da API
 type PresenceResponse = {
   presence: {
     id: string;
@@ -24,17 +23,14 @@ export default function StudentDashboard() {
   const { toast } = useToast();
   const today = new Date();
 
-  // 1. Busca a presença de hoje no servidor
   const { data, isLoading } = useQuery<PresenceResponse>({
     queryKey: ["/api/presence/today"],
     queryFn: async () => apiRequest("/api/presence/today"),
   });
 
-  // Estado local para controle rápido da UI
   const [statusIda, setStatusIda] = useState(false);
   const [statusVolta, setStatusVolta] = useState(false);
 
-  // Atualiza o estado local quando os dados do servidor chegam
   useEffect(() => {
     if (data?.presence) {
       setStatusIda(data.presence.statusIda);
@@ -42,16 +38,15 @@ export default function StudentDashboard() {
     }
   }, [data]);
 
-  // 2. Função para enviar a presença (Mutation)
   const mutation = useMutation({
     mutationFn: async (newStatus: { ida: boolean; volta: boolean }) => {
       const res = await apiRequest("/api/presence", {
         method: "POST",
         body: JSON.stringify({
-          studentId: user?.id, // O backend valida isso
+          studentId: user?.id,
           statusIda: newStatus.ida,
           statusVolta: newStatus.volta,
-          observation: "", // Futuramente pode ser um campo de texto
+          observation: "",
         }),
       });
       return res.json();
@@ -60,17 +55,17 @@ export default function StudentDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/presence/today"] });
       toast({
         title: "Sucesso!",
-        description: "Sua presença foi atualizada.",
+        description: "Sua presença foi confirmada.",
         variant: "default",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Erro ao marcar",
-        description: error.message,
+        description: "Não foi possível atualizar sua presença.",
         variant: "destructive",
       });
-      // Reverte o estado visual em caso de erro
+      // Reverte visualmente em caso de erro
       if (data?.presence) {
         setStatusIda(data.presence.statusIda);
         setStatusVolta(data.presence.statusVolta);
@@ -80,13 +75,13 @@ export default function StudentDashboard() {
 
   const handleToggleIda = () => {
     const novoStatus = !statusIda;
-    setStatusIda(novoStatus); // Feedback instantâneo
+    setStatusIda(novoStatus);
     mutation.mutate({ ida: novoStatus, volta: statusVolta });
   };
 
   const handleToggleVolta = () => {
     const novoStatus = !statusVolta;
-    setStatusVolta(novoStatus); // Feedback instantâneo
+    setStatusVolta(novoStatus);
     mutation.mutate({ ida: statusIda, volta: novoStatus });
   };
 
@@ -96,7 +91,6 @@ export default function StudentDashboard() {
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 pb-20">
-      {/* Cabeçalho */}
       <div className="mb-6 space-y-1">
         <h1 className="text-2xl font-bold text-primary">Olá, {user?.fullName.split(" ")[0]}!</h1>
         <p className="text-muted-foreground capitalize">
@@ -104,7 +98,7 @@ export default function StudentDashboard() {
         </p>
       </div>
 
-      {/* Status Financeiro (Resumo) */}
+      {/* Status Financeiro */}
       <Card className="mb-6 border-l-4 border-l-yellow-500 shadow-sm">
         <CardContent className="p-4 flex items-center justify-between">
           <div>
@@ -121,8 +115,7 @@ export default function StudentDashboard() {
       </h2>
 
       <div className="grid gap-4 md:grid-cols-2">
-        
-        {/* CARD IDA */}
+        {/* IDA */}
         <Card className={`transition-all duration-300 ${statusIda ? "border-green-500 bg-green-50/50" : ""}`}>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
@@ -153,7 +146,7 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
 
-        {/* CARD VOLTA */}
+        {/* VOLTA */}
         <Card className={`transition-all duration-300 ${statusVolta ? "border-green-500 bg-green-50/50" : ""}`}>
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
@@ -183,10 +176,8 @@ export default function StudentDashboard() {
             </Button>
           </CardContent>
         </Card>
-
       </div>
 
-      {/* Botão Extra de Localização (Opcional) */}
       <div className="mt-6">
         <Button variant="ghost" className="w-full text-muted-foreground flex gap-2">
           <MapPin className="w-4 h-4" />

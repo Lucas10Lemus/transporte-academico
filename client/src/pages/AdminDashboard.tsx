@@ -1,126 +1,171 @@
-import StatsCard from "@/components/StatsCard";
-import RouteCard from "@/components/RouteCard";
-import PaymentTable from "@/components/PaymentTable";
-import { Bus, Users, DollarSign, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, Bus, AlertCircle, Wallet, ArrowUpRight } from "lucide-react";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 
+type Stats = {
+  totalStudents: number;
+  activeRoutes: number;
+  pendingPayments: number;
+  totalRevenue: string;
+};
+
 export default function AdminDashboard() {
-  const mockPayments = [
-    { id: '1', studentName: 'Ana Costa', route: 'North Campus', amount: 250, status: 'PAID' as const, dueDate: '2025-11-05' },
-    { id: '2', studentName: 'Bruno Lima', route: 'South Campus', amount: 250, status: 'PENDING' as const, dueDate: '2025-11-10' },
-    { id: '3', studentName: 'Carla Souza', route: 'East Campus', amount: 250, status: 'OVERDUE' as const, dueDate: '2025-10-15' },
-    { id: '4', studentName: 'Daniel Rocha', route: 'West Campus', amount: 250, status: 'PAID' as const, dueDate: '2025-11-05' },
-  ];
+  // Busca dados reais (você pode criar esse endpoint /api/stats depois se quiser, 
+  // por enquanto vamos usar os endpoints que já temos para calcular ou mostrar loading)
+  
+  const { data: usersData } = useQuery({
+    queryKey: ["/api/users"],
+    queryFn: async () => apiRequest("/api/users"),
+  });
+
+  const { data: routesData } = useQuery({
+    queryKey: ["/api/routes"],
+    queryFn: async () => apiRequest("/api/routes"),
+  });
+
+  const { data: paymentsData } = useQuery({
+    queryKey: ["/api/payments"],
+    queryFn: async () => apiRequest("/api/payments"),
+  });
+
+  // Cálculos simples com os dados carregados
+  const totalStudents = usersData?.users?.filter((u: any) => u.role === "STUDENT").length || 0;
+  const activeRoutes = routesData?.routes?.filter((r: any) => r.isActive).length || 0;
+  const pendingPayments = paymentsData?.payments?.filter((p: any) => p.status === "PENDING").length || 0;
+  
+  // Mock de receita para exemplo (soma dos 'paid')
+  const revenue = paymentsData?.payments
+    ?.filter((p: any) => p.status === "PAID")
+    .reduce((acc: number, curr: any) => acc + parseFloat(curr.amountDue), 0) || 0;
 
   return (
-    <div className="space-y-6" data-testid="page-admin-dashboard">
-      <div>
-        <h1 className="text-3xl font-semibold mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's what's happening today.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard title="Active Routes" value={12} icon={Bus} trend={{ value: 8, isPositive: true }} />
-        <StatsCard title="Total Students" value={245} icon={Users} />
-        <StatsCard title="Monthly Revenue" value="R$ 61,250" icon={DollarSign} trend={{ value: 12, isPositive: true }} />
-        <StatsCard title="Pending Payments" value={18} icon={AlertCircle} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-4">
-              <CardTitle>Recent Payments</CardTitle>
-              <Button variant="outline" size="sm" data-testid="button-view-all-payments">
-                View All
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <PaymentTable 
-                payments={mockPayments}
-                onViewDetails={(id) => console.log('View details:', id)}
-                onMarkPaid={(id) => console.log('Mark paid:', id)}
-                onSendReminder={(id) => console.log('Send reminder:', id)}
-              />
-            </CardContent>
-          </Card>
-        </div>
-
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex gap-3">
-                  <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">New student enrolled</p>
-                    <p className="text-xs text-muted-foreground">North Campus Route • 2h ago</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-2 h-2 rounded-full bg-success mt-2 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">Payment received</p>
-                    <p className="text-xs text-muted-foreground">R$ 250.00 • 3h ago</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-2 h-2 rounded-full bg-warning mt-2 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">Route capacity updated</p>
-                    <p className="text-xs text-muted-foreground">South Campus Route • 5h ago</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Visão Geral</h1>
+          <p className="text-muted-foreground">Bem-vindo ao painel de controle.</p>
         </div>
+        <Link href="/students">
+          <Button>
+            <Users className="mr-2 h-4 w-4" /> Gerenciar Alunos
+          </Button>
+        </Link>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold">Active Routes</h2>
-          <Button data-testid="button-add-route">Add Route</Button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <RouteCard
-            id="1"
-            name="North Campus Route"
-            driverName="João Silva"
-            capacity={30}
-            enrolled={24}
-            startTime="07:00"
-            isActive={true}
-            onViewDetails={() => console.log('View details')}
-            onEdit={() => console.log('Edit route')}
-          />
-          <RouteCard
-            id="2"
-            name="South Campus Route"
-            driverName="Maria Santos"
-            capacity={25}
-            enrolled={25}
-            startTime="07:30"
-            isActive={true}
-            onViewDetails={() => console.log('View details')}
-            onEdit={() => console.log('Edit route')}
-          />
-          <RouteCard
-            id="3"
-            name="East Campus Route"
-            driverName="Carlos Oliveira"
-            capacity={28}
-            enrolled={22}
-            startTime="07:15"
-            isActive={true}
-            onViewDetails={() => console.log('View details')}
-            onEdit={() => console.log('Edit route')}
-          />
-        </div>
+      {/* GRID DE ESTATÍSTICAS */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total de Alunos</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalStudents}</div>
+            <p className="text-xs text-muted-foreground">
+              Matriculados e ativos
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Rotas Ativas</CardTitle>
+            <Bus className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeRoutes}</div>
+            <p className="text-xs text-muted-foreground">
+              Operando hoje
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pendências</CardTitle>
+            <AlertCircle className="h-4 w-4 text-orange-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{pendingPayments}</div>
+            <p className="text-xs text-muted-foreground">
+              Mensalidades em aberto
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Receita (Mês)</CardTitle>
+            <Wallet className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-700">
+              R$ {revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total recebido
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* SEÇÃO DE ATALHOS RÁPIDOS */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-6">
+        <Card className="col-span-2">
+          <CardHeader>
+            <CardTitle>Acesso Rápido</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <Link href="/routes">
+              <div className="flex items-center p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                <div className="p-2 bg-blue-100 rounded-full mr-4">
+                  <Bus className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-medium">Gerenciar Rotas</p>
+                  <p className="text-sm text-muted-foreground">Criar ou editar itinerários</p>
+                </div>
+                <ArrowUpRight className="ml-auto h-4 w-4 text-muted-foreground" />
+              </div>
+            </Link>
+
+            <Link href="/payments">
+              <div className="flex items-center p-4 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors">
+                <div className="p-2 bg-green-100 rounded-full mr-4">
+                  <Wallet className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-medium">Financeiro</p>
+                  <p className="text-sm text-muted-foreground">Dar baixa em pagamentos</p>
+                </div>
+                <ArrowUpRight className="ml-auto h-4 w-4 text-muted-foreground" />
+              </div>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* LISTA DE DEVEDORES (RESUMO) */}
+        <Card className="col-span-1 border-red-200">
+          <CardHeader>
+            <CardTitle className="text-red-600 flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" /> Atenção
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Existem <strong>{pendingPayments}</strong> alunos com mensalidades pendentes.
+            </p>
+            <Link href="/payments">
+              <Button variant="outline" className="w-full text-red-600 hover:text-red-700 hover:bg-red-50">
+                Ver Lista de Cobrança
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

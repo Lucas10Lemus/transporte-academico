@@ -69,7 +69,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       setUser(null);
-      queryClient.removeQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.clear();
+      window.location.href = "/";
     },
   });
 

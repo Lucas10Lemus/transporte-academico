@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Phone, MapPin, Search, RefreshCw, Sun, Moon } from "lucide-react";
 
-// Define o formato dos dados que vêm do Backend
 type ManifestItem = {
   studentId: string;
   name: string;
@@ -26,7 +25,6 @@ export default function DriverDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [universityFilter, setUniversityFilter] = useState("TODAS");
 
-  // 1. Busca a lista real no servidor (Auto-atualiza a cada 30s)
   const { data, isLoading, refetch } = useQuery<{ manifest: ManifestItem[] }>({
     queryKey: ["/api/driver/manifest"],
     queryFn: async () => apiRequest("/api/driver/manifest"),
@@ -35,22 +33,16 @@ export default function DriverDashboard() {
 
   const manifest = data?.manifest || [];
 
-  // 2. Aplica os filtros (Busca por nome + Faculdade)
   const filteredList = manifest.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    // Nota: Adicione 'university' no cadastro do aluno futuramente para filtrar real
-    // Por enquanto, filtra só por busca se o campo university estiver vazio no banco
     const matchesUni = universityFilter === "TODAS" || item.university === universityFilter;
     return matchesSearch && matchesUni;
   });
 
-  // Contadores para as abas
   const countIda = manifest.filter(i => i.statusIda).length;
   const countVolta = manifest.filter(i => i.statusVolta).length;
 
-  // Componente da Lista (Renderiza cada aluno)
   const StudentList = ({ type }: { type: "IDA" | "VOLTA" }) => {
-    // Mostra só quem marcou "VOU" para esta viagem
     const list = filteredList.filter(item => type === "IDA" ? item.statusIda : item.statusVolta);
 
     if (list.length === 0) {
@@ -67,12 +59,12 @@ export default function DriverDashboard() {
     return (
       <div className="space-y-3">
         {list.map((student) => (
-          <div key={student.studentId} className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm animate-in fade-in slide-in-from-bottom-2">
+          <div key={student.studentId} className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm">
             <div className="space-y-1">
               <p className="font-bold text-lg leading-none">{student.name}</p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant="secondary" className="text-xs font-normal h-5">
-                  {student.university || "Uni"}
+                  {student.university || "Faculdade"}
                 </Badge>
                 <span className="flex items-center gap-1 text-xs">
                   <MapPin className="w-3 h-3" /> {student.pickupLocation}
@@ -95,7 +87,6 @@ export default function DriverDashboard() {
 
   return (
     <div className="min-h-screen bg-muted/30 p-4 pb-24">
-      {/* Cabeçalho */}
       <div className="flex justify-between items-end mb-6">
         <div>
           <h1 className="text-2xl font-bold text-primary tracking-tight">Lista de Presença</h1>
@@ -106,7 +97,7 @@ export default function DriverDashboard() {
         </Button>
       </div>
 
-      {/* Filtros Fixos */}
+      {/* Filtros */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md p-2 -mx-4 px-4 mb-4 border-b shadow-sm">
         <div className="relative mb-3">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -122,7 +113,7 @@ export default function DriverDashboard() {
             <Badge 
               key={uni}
               variant={universityFilter === uni ? "default" : "outline"}
-              className="h-7 px-3 cursor-pointer whitespace-nowrap transition-all"
+              className="h-7 px-3 cursor-pointer whitespace-nowrap"
               onClick={() => setUniversityFilter(uni)}
             >
               {uni}
@@ -131,22 +122,22 @@ export default function DriverDashboard() {
         </div>
       </div>
 
-      {/* Abas Principais */}
+      {/* Abas */}
       <Tabs defaultValue="IDA" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-12 mb-6 bg-muted/50 p-1">
-          <TabsTrigger value="IDA" className="text-base gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="IDA" className="text-base gap-2">
             <Sun className="w-4 h-4 text-orange-500" /> IDA ({countIda})
           </TabsTrigger>
-          <TabsTrigger value="VOLTA" className="text-base gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+          <TabsTrigger value="VOLTA" className="text-base gap-2">
             <Moon className="w-4 h-4 text-blue-500" /> VOLTA ({countVolta})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="IDA" className="mt-0">
+        <TabsContent value="IDA">
           <StudentList type="IDA" />
         </TabsContent>
 
-        <TabsContent value="VOLTA" className="mt-0">
+        <TabsContent value="VOLTA">
           <StudentList type="VOLTA" />
         </TabsContent>
       </Tabs>

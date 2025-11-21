@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Clock, Users, Plus, Trash2 } from "lucide-react";
+import { MapPin, Users, Plus, Trash2 } from "lucide-react";
 
 type Route = {
   id: string;
@@ -34,7 +34,7 @@ export default function RoutesPage() {
 
   const routes = routesData?.routes || [];
 
-  // Mutation para criar rota
+  // Criar rota
   const createMutation = useMutation({
     mutationFn: async (newRoute: any) => {
       await apiRequest("/api/routes", {
@@ -56,7 +56,7 @@ export default function RoutesPage() {
     },
   });
 
-  // Mutation para deletar rota
+  // Excluir rota
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest(`/api/routes/${id}`, { method: "DELETE" });
@@ -68,7 +68,7 @@ export default function RoutesPage() {
     onError: (error: any) => {
       toast({
         title: "Erro",
-        description: error.message, // Vai avisar se tiver alunos vinculados
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -91,7 +91,7 @@ export default function RoutesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Gerenciar Rotas</h1>
-          <p className="text-muted-foreground">Crie e organize os itinerários dos ônibus.</p>
+          <p className="text-muted-foreground">Organize os itinerários.</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -107,16 +107,16 @@ export default function RoutesPage() {
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome da Rota</Label>
-                <Input id="name" name="name" placeholder="Ex: Rota Centro - Noite" required />
+                <Input id="name" name="name" placeholder="Ex: Rota Centro" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="startTime">Horário de Saída</Label>
+                  <Label htmlFor="startTime">Saída</Label>
                   <Input id="startTime" name="startTime" type="time" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="maxCapacity">Capacidade</Label>
-                  <Input id="maxCapacity" name="maxCapacity" type="number" min="1" placeholder="45" required />
+                  <Label htmlFor="maxCapacity">Lotação</Label>
+                  <Input id="maxCapacity" name="maxCapacity" type="number" min="1" required />
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending}>
@@ -127,31 +127,23 @@ export default function RoutesPage() {
         </Dialog>
       </div>
 
-      {isLoading ? (
-        <div>Carregando rotas...</div>
-      ) : (
+      {isLoading ? <div>Carregando...</div> : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {routes.map((route) => (
             <Card key={route.id}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {route.name}
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">{route.name}</CardTitle>
                 <MapPin className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{route.startTime}</div>
-                <p className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                  <Users className="h-3 w-3" /> Capacidade: {route.maxCapacity}
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Capacidade: {route.maxCapacity}</p>
                 <Button 
                   variant="destructive" 
                   size="sm" 
                   className="w-full mt-4"
                   onClick={() => {
-                    if(confirm("Tem certeza? Isso só funciona se a rota não tiver alunos.")) {
-                      deleteMutation.mutate(route.id);
-                    }
+                    if(confirm("Tem certeza?")) deleteMutation.mutate(route.id);
                   }}
                 >
                   <Trash2 className="h-4 w-4 mr-2" /> Excluir

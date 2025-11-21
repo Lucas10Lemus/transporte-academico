@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
-import { useLocation } from "wouter"; // Importamos o hook de navegação
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,10 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { login, user } = useAuth(); // Pegamos o 'user' do contexto
+  const { login, user } = useAuth();
   const { toast } = useToast();
-  const [, setLocation] = useLocation(); // Hook para mudar de página
+  const [, setLocation] = useLocation();
 
-  // Efeito automático: Se o usuário já estiver logado, redireciona ele
   useEffect(() => {
     if (user) {
       redirectBasedOnRole(user.role);
@@ -26,16 +25,14 @@ export default function Login() {
   const redirectBasedOnRole = (role: string) => {
     switch (role) {
       case "ADMIN":
-        setLocation("/admin");
-        break;
       case "COORDINATOR":
-        setLocation("/admin"); // Ou /coordinator se existir
+        setLocation("/routes"); // Admin vai para gestão
         break;
       case "DRIVER":
-        setLocation("/driver");
+        setLocation("/schedule"); // Motorista vai para a lista
         break;
       case "STUDENT":
-        setLocation("/student");
+        setLocation("/my-route"); // Aluno vai para marcar presença
         break;
       default:
         setLocation("/");
@@ -52,14 +49,13 @@ export default function Login() {
         title: "Bem-vindo!",
         description: "Login realizado com sucesso.",
       });
-      // O useEffect acima vai cuidar do redirecionamento assim que o 'user' mudar
     } catch (error: any) {
       toast({
         title: "Falha no Login",
-        description: error.message || "Credenciais inválidas",
+        description: "E-mail ou senha incorretos. Tente novamente.",
         variant: "destructive",
       });
-      setIsLoading(false); // Só paramos de carregar se der erro
+      setIsLoading(false);
     }
   };
 
@@ -74,17 +70,17 @@ export default function Login() {
           </div>
           <div>
             <CardTitle className="text-2xl">Transporte Acadêmico</CardTitle>
-            <CardDescription>Sistema de Gestão de Transporte</CardDescription>
+            <CardDescription>Sistema de Gestão Inteligente</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">E-mail</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@transport.com"
+                placeholder="seu.email@exemplo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
