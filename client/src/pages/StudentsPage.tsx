@@ -108,6 +108,7 @@ export default function StudentsPage() {
       fullName: formData.get("fullName"),
       email: formData.get("email"),
       phoneNumber: formData.get("phoneNumber"),
+      institution: formData.get("institution"),
     });
   };
 
@@ -148,6 +149,10 @@ export default function StudentsPage() {
               <Button type="submit" className="w-full" disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Salvando..." : "Cadastrar"}
               </Button>
+              <div className="space-y-2">
+                <Label htmlFor="institution">Instituição</Label>
+                <Input id="institution" name="institution" placeholder="Ex: IFMA, UEMA..." />
+              </div>
             </form>
           </DialogContent>
         </Dialog>

@@ -15,12 +15,13 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   phoneNumber: text("phone_number"),
   role: userRoleEnum("role").notNull(),
+  institution: text("institution"),
   isActive: boolean("is_active").notNull().default(true),
 });
 
 export const routes = pgTable("routes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
+  name: text("name").notNull(), 
   driverId: varchar("driver_id").references(() => users.id),
   maxCapacity: integer("max_capacity").notNull(),
   startTime: time("start_time").notNull(),
@@ -71,6 +72,7 @@ export const dailyPresence = pgTable("daily_presence", {
 export const insertUserSchema = createInsertSchema(users, {
   email: z.string().email(),
   phoneNumber: z.string().optional(),
+  institution: z.string().optional(),
 }).omit({
   id: true,
 });
