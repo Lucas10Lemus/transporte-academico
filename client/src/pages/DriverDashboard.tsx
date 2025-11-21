@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Phone, MapPin, Search, RefreshCw, Sun, Moon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type ManifestItem = {
   studentId: string;
@@ -32,6 +31,12 @@ export default function DriverDashboard() {
   });
 
   const manifest = data?.manifest || [];
+
+  // Lógica Inteligente: Cria a lista de faculdades baseada nos alunos que existem
+  const uniqueUniversities = useMemo(() => {
+    const unis = new Set(manifest.map(i => i.university).filter(Boolean));
+    return ["TODAS", ...Array.from(unis)];
+  }, [manifest]);
 
   const filteredList = manifest.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -59,12 +64,12 @@ export default function DriverDashboard() {
     return (
       <div className="space-y-3">
         {list.map((student) => (
-          <div key={student.studentId} className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm">
+          <div key={student.studentId} className="flex items-center justify-between p-4 bg-card rounded-lg border shadow-sm animate-in fade-in slide-in-from-bottom-2">
             <div className="space-y-1">
               <p className="font-bold text-lg leading-none">{student.name}</p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant="secondary" className="text-xs font-normal h-5">
-                  {student.university || "Faculdade"}
+                  {student.university}
                 </Badge>
                 <span className="flex items-center gap-1 text-xs">
                   <MapPin className="w-3 h-3" /> {student.pickupLocation}
@@ -97,7 +102,7 @@ export default function DriverDashboard() {
         </Button>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros Dinâmicos */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-md p-2 -mx-4 px-4 mb-4 border-b shadow-sm">
         <div className="relative mb-3">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -109,11 +114,11 @@ export default function DriverDashboard() {
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {["TODAS", "UniFacema", "IFMA", "UEMA"].map(uni => (
+          {uniqueUniversities.map(uni => (
             <Badge 
               key={uni}
               variant={universityFilter === uni ? "default" : "outline"}
-              className="h-7 px-3 cursor-pointer whitespace-nowrap"
+              className="h-7 px-3 cursor-pointer whitespace-nowrap transition-all"
               onClick={() => setUniversityFilter(uni)}
             >
               {uni}
@@ -122,22 +127,21 @@ export default function DriverDashboard() {
         </div>
       </div>
 
-      {/* Abas */}
       <Tabs defaultValue="IDA" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-12 mb-6 bg-muted/50 p-1">
-          <TabsTrigger value="IDA" className="text-base gap-2">
+          <TabsTrigger value="IDA" className="text-base gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <Sun className="w-4 h-4 text-orange-500" /> IDA ({countIda})
           </TabsTrigger>
-          <TabsTrigger value="VOLTA" className="text-base gap-2">
+          <TabsTrigger value="VOLTA" className="text-base gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <Moon className="w-4 h-4 text-blue-500" /> VOLTA ({countVolta})
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="IDA">
+        <TabsContent value="IDA" className="mt-0">
           <StudentList type="IDA" />
         </TabsContent>
 
-        <TabsContent value="VOLTA">
+        <TabsContent value="VOLTA" className="mt-0">
           <StudentList type="VOLTA" />
         </TabsContent>
       </Tabs>

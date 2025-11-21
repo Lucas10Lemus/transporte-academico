@@ -215,7 +215,7 @@ export class DatabaseStorage {
         studentId: student.id,
         name: student.fullName,
         phone: student.phoneNumber,
-        university: "UniFacema", 
+        university: student.institution || "Não Informada", 
         routeId: route?.id,
         routeName: route?.name,
         statusIda: presence?.statusIda || false,
